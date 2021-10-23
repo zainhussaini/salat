@@ -16,6 +16,11 @@ This package supports the following calculation methods:
 
 There are many more methods in use around the world, so if there's any missing that you would like to see please submit an issue.
 
+## Installation
+```shell
+pip install salat
+```
+
 ## Example code
 
 ```python
