@@ -33,3 +33,8 @@ prayer_times = pt.calc_times(datetime.now().date(), eastern, longitude, latitude
 for name, prayer_time in prayer_times.items():
     print(name, prayer_time)
 ```
+
+## Planned features
+1. Adjustment for higher altitudes
+2. Options for Isha/Fajr calculation in high altitudes based on "middle of the night" and "sevent of the night" methods
+3. Add additional calculation methods like Makkah method by Umm al-Qura University, Makkah
