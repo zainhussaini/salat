@@ -3,8 +3,8 @@ import datetime as dt
 import math
 
 
-def within_second(time1: dt.datetime, time2: dt.datetime) -> bool:
-    """Checks that two datetimes are within 1 second of each other
+def time_equals(time1: dt.datetime, time2: dt.datetime) -> bool:
+    """Checks that two datetimes are within 1 microsecond of each other
 
     Args:
         time1 (dt.datetime): first datetime
@@ -13,7 +13,7 @@ def within_second(time1: dt.datetime, time2: dt.datetime) -> bool:
     Returns:
         bool: True if both datetimes are within 1 second of each other
     """
-    if not math.isclose((time1 - time2).total_seconds(), 0, rel_tol=0, abs_tol=1):
+    if not math.isclose((time1 - time2).total_seconds(), 0, rel_tol=0, abs_tol=1e-6):
         print(time1)
         print(time2)
         print(time1 - time2)
@@ -37,20 +37,20 @@ def test_ISNA():
 
     prayer_times = pt.calc_times(date, eastern, longitude, latitude)
 
-    fajr = dt.datetime(2000, 1, 1, 6, 58, 14, tzinfo=eastern)
-    assert within_second(prayer_times["fajr"], fajr)
+    fajr = dt.datetime(2000, 1, 1, 5, 58, 15, 232445, eastern)
+    assert time_equals(prayer_times["fajr"], fajr)
 
-    dhuhr = dt.datetime(2000, 1, 1, 12, 59, 24, tzinfo=eastern)
-    assert within_second(prayer_times["dhuhr"], dhuhr)
+    dhuhr = dt.datetime(2000, 1, 1, 11, 59, 25, 683315, eastern)
+    assert time_equals(prayer_times["dhuhr"], dhuhr)
 
-    asr = dt.datetime(2000, 1, 1, 15, 20, 53, tzinfo=eastern)
-    assert within_second(prayer_times["asr"], asr)
+    asr = dt.datetime(2000, 1, 1, 14, 20, 54, 967648, eastern)
+    assert time_equals(prayer_times["asr"], asr)
 
-    maghrib = dt.datetime(2000, 1, 1, 17, 38, 40, tzinfo=eastern)
-    assert within_second(prayer_times["maghrib"], maghrib)
+    maghrib = dt.datetime(2000, 1, 1, 16, 38, 42, 57867, eastern)
+    assert time_equals(prayer_times["maghrib"], maghrib)
 
-    isha = dt.datetime(2000, 1, 1, 19, 0, 34, tzinfo=eastern)
-    assert within_second(prayer_times["isha"], isha)
+    isha = dt.datetime(2000, 1, 1, 18, 0, 36, 134185, eastern)
+    assert time_equals(prayer_times["isha"], isha)
 
-    midnight = dt.datetime(2000, 1, 2, 0, 59, 27, tzinfo=eastern)
-    assert within_second(prayer_times["midnight"], midnight)
+    midnight = dt.datetime(2000, 1, 1, 23, 59, 29, 74091, eastern)
+    assert time_equals(prayer_times["midnight"], midnight)
