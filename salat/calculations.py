@@ -139,7 +139,9 @@ def calc_dhuhr(date: dt.date, timezone: dt.timezone, longitude: float) -> dt.dat
     noon = dt.datetime(date.year, date.month, date.day, 12, tzinfo=timezone)
     eot, decl = eot_decl(noon)
 
-    offset_secs = timezone.utcoffset(noon).total_seconds()
+    gmt = dt.timezone(dt.timedelta())
+    noon_gmt = dt.datetime(date.year, date.month, date.day, 12, tzinfo=gmt)
+    offset_secs = (noon_gmt - noon).total_seconds()
     offset_hrs = offset_secs / 60 / 60
 
     # this accounts for time zone (daylight savings included) and longitude
