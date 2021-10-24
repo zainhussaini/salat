@@ -32,8 +32,8 @@ def test_ISNA():
     longitude = -74.0060 # degrees East
     latitude = 40.7128 # degrees North
 
-    # EST timezone (UTC offset of -5) on date
-    eastern = dt.timezone(dt.timedelta(hours=-4))
+    # EST timezone (UTC offset of -5 hours)
+    eastern = dt.timezone(dt.timedelta(hours=-5), "EST")
 
     prayer_times = pt.calc_times(date, eastern, longitude, latitude)
 
