@@ -49,6 +49,8 @@ pip install salat
 ```python
 import salat
 import datetime as dt
+import pytz
+import tabulate
 
 pt = salat.PrayerTimes(salat.CalculationMethod.ISNA, salat.AsrMethod.STANDARD)
 # January 1, 2000
@@ -56,24 +58,29 @@ date = dt.date(2000, 1, 1)
 # address of NYC
 longitude = -74.0060 # degrees East
 latitude = 40.7128 # degrees North
-# EST timezone (UTC offset of -5 hours)
-eastern = dt.timezone(dt.timedelta(hours=-5), "EST")
+eastern = pytz.timezone('US/Eastern')
 # calculate times
 prayer_times = pt.calc_times(date, eastern, longitude, latitude)
 
+# print in a table
+table = [["Name", "Time"]]
 for name, time in prayer_times.items():
-    print(name, time)
+    readable_time = time.astimezone(eastern).strftime("%m/%d/%Y, %H:%M:%S")
+    table.append([name, readable_time])
+print(tabulate.tabulate(table, headers='firstrow'))
 ```
 
 Output
 ```
-fajr 2000-01-01 05:58:15.232445-05:00
-sunrise 2000-01-01 07:20:09.308763-05:00
-dhuhr 2000-01-01 11:59:25.683315-05:00
-asr 2000-01-01 14:20:54.967648-05:00
-maghrib 2000-01-01 16:38:42.057867-05:00
-isha 2000-01-01 18:00:36.134185-05:00
-midnight 2000-01-01 23:59:29.074091-05:00
+Name      Time
+--------  --------------------
+fajr      01/01/2000, 05:58:15
+sunrise   01/01/2000, 07:20:09
+dhuhr     01/01/2000, 11:59:25
+asr       01/01/2000, 14:20:54
+maghrib   01/01/2000, 16:38:42
+isha      01/01/2000, 18:00:36
+midnight  01/01/2000, 23:59:29
 ```
 
 ## Planned features
