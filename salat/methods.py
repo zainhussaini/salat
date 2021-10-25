@@ -63,7 +63,7 @@ class GeneralMethod:
 
     def calc_times(
         self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
-    ) -> dict[str, dt.datetime]:
+    ) -> "dict[str, dt.datetime]":
         """Calculates prayer times including sunrise and midnight.
 
         Args:
