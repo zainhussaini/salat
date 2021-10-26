@@ -80,25 +80,23 @@ class GeneralMethod:
         """
         sunset_altitude = math.radians(0.833)
 
-        fajr = time_alt_first(date, timezone, self.fajr_altitude, longitude, latitude)
+        fajr = time_alt_first(date, self.fajr_altitude, longitude, latitude)
 
-        sunrise = time_alt_first(date, timezone, sunset_altitude, longitude, latitude)
+        sunrise = time_alt_first(date, sunset_altitude, longitude, latitude)
 
-        dhuhr = calc_dhuhr(date, timezone, longitude)
+        dhuhr = calc_dhuhr(date, longitude)
 
-        first = time_sf_first(date, timezone, self.shadow_factor, longitude, latitude)
+        first = time_sf_first(date, self.shadow_factor, longitude, latitude)
         asr = dhuhr + (dhuhr - first)
 
-        first = time_alt_first(date, timezone, sunset_altitude, longitude, latitude)
+        first = time_alt_first(date, sunset_altitude, longitude, latitude)
         maghrib = dhuhr + (dhuhr - first)
 
-        first = time_alt_first(date, timezone, self.isha_altitude, longitude, latitude)
+        first = time_alt_first(date, self.isha_altitude, longitude, latitude)
         isha = dhuhr + (dhuhr - first)
 
         next_date = date + dt.timedelta(days=1)
-        next_sunrise = time_alt_first(
-            next_date, timezone, sunset_altitude, longitude, latitude
-        )
+        next_sunrise = time_alt_first(next_date, sunset_altitude, longitude, latitude)
         midnight = maghrib + (next_sunrise - maghrib) / 2
 
         times = {
@@ -110,6 +108,9 @@ class GeneralMethod:
             "isha": isha,
             "midnight": midnight,
         }
+
+        for name in times:
+            times[name] = times[name].astimezone(timezone)
         return times
 
 
@@ -124,20 +125,18 @@ class TehranMethod(GeneralMethod):
     ):
         magrib_altitude = math.radians(4.5)
 
-        general_times = super().calc_times(date, timezone, longitude, latitude)
+        general_times = super().calc_times(date, longitude, latitude)
         sunset = general_times["maghrib"]
 
         # maghrib time is different, fajr time stays the same
-        first = time_alt_first(date, timezone, magrib_altitude, longitude, latitude)
+        first = time_alt_first(date, magrib_altitude, longitude, latitude)
         dhuhr = general_times["dhuhr"]
         maghrib = dhuhr + (dhuhr - first)
         general_times["maghrib"] = maghrib
 
         # midnight is different, it is between sunset and fajr
         next_date = date + dt.timedelta(days=1)
-        next_fajr = time_alt_first(
-            next_date, timezone, self.fajr_altitude, longitude, latitude
-        )
+        next_fajr = time_alt_first(next_date, self.fajr_altitude, longitude, latitude)
         midnight = sunset + (next_fajr - sunset) / 2
         general_times["midnight"] = midnight
 
@@ -159,16 +158,14 @@ class JafariMethod(GeneralMethod):
         sunset = general_times["maghrib"]
 
         # maghrib time is different, fajr time stays the same
-        first = time_alt_first(date, timezone, magrib_altitude, longitude, latitude)
+        first = time_alt_first(date, magrib_altitude, longitude, latitude)
         dhuhr = general_times["dhuhr"]
         maghrib = dhuhr + (dhuhr - first)
         general_times["maghrib"] = maghrib
 
         # midnight is different, it is between sunset and fajr
         next_date = date + dt.timedelta(days=1)
-        next_fajr = time_alt_first(
-            next_date, timezone, self.fajr_altitude, longitude, latitude
-        )
+        next_fajr = time_alt_first(next_date, self.fajr_altitude, longitude, latitude)
         midnight = sunset + (next_fajr - sunset) / 2
         general_times["midnight"] = midnight
 

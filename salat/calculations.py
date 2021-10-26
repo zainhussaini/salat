@@ -37,8 +37,7 @@ def eot_decl(time: dt.datetime) -> "tuple[dt.timedelta, float]":
     y100 = days_since_epoch / 36525  # centuries since epoch
     e = 1.6709e-2 - 4.193e-5 * y100 - 1.26e-7 * y100 ** 2
     lam_p = math.radians(282.93807 + 1.7195 * y100 + 3.025e-4 * y100 ** 2)
-    epsilon = math.radians(23.4393 - 0.013 * y100 -
-                           2e-7 * y100 ** 2 + 5e-7 * y100 ** 3)
+    epsilon = math.radians(23.4393 - 0.013 * y100 - 2e-7 * y100 ** 2 + 5e-7 * y100 ** 3)
 
     MD = 6.24004077  # M at epoch (Jan 1 2000 at noon)
     TY = 365.2596358  # days in a year
@@ -92,8 +91,7 @@ def KeplerSolve(M: float, e: float) -> float:
         float: eccentric anomaly
     """
     if not 0 < e < 1:
-        raise ValueError(
-            "Eccentricity of elliptical orbit required in range (0, 1)")
+        raise ValueError("Eccentricity of elliptical orbit required in range (0, 1)")
 
     # find E such that M = E - e*sin(E)
     E = M
@@ -129,7 +127,7 @@ def timedelta_at_altitude(
     return dt.timedelta(hours=hours)
 
 
-def calc_dhuhr(date: dt.date, timezone: dt.tzinfo, longitude: float) -> dt.datetime:
+def calc_dhuhr(date: dt.date, longitude: float) -> dt.datetime:
     """Calculates time of Dhuhr on date at longitude, in the timezone given.
 
     Args:
@@ -138,7 +136,7 @@ def calc_dhuhr(date: dt.date, timezone: dt.tzinfo, longitude: float) -> dt.datet
         longitude (float): The longitude in degrees East
 
     Returns:
-        datetime: The specific time of Dhuhr on the date, with correct timezone
+        datetime: The specific time of Dhuhr on the date, in utc timezone
     """
     # this accounts for time zone (daylight savings included) and longitude
     utc = dt.timezone(dt.timedelta())
@@ -163,7 +161,7 @@ def calc_dhuhr(date: dt.date, timezone: dt.tzinfo, longitude: float) -> dt.datet
         return actual - guess
 
     # guess is when sun would be at zenith ignoring eot
-    guess = utc_noon - dt.timedelta(hours=longitude/15)
+    guess = utc_noon - dt.timedelta(hours=longitude / 15)
     # eot is usually between -14 to +16 minutes, so bound that by guess1 and guess2
     guess1 = guess - dt.timedelta(minutes=20)
     guess2 = guess + dt.timedelta(minutes=20)
@@ -173,7 +171,6 @@ def calc_dhuhr(date: dt.date, timezone: dt.tzinfo, longitude: float) -> dt.datet
 
 def time_alt_first(
     date: dt.date,
-    timezone: dt.tzinfo,
     altitude: float,
     longitude: float,
     latitude: float,
@@ -191,9 +188,9 @@ def time_alt_first(
 
     Returns:
         datetime: The time on the given date when Sun's altitude is as given and
-            the Sun is rising
+            the Sun is rising, in utc timezone
     """
-    dhuhr = calc_dhuhr(date, timezone, longitude)
+    dhuhr = calc_dhuhr(date, longitude)
 
     # the declination depends on the date (and therefore changes slightly over
     # the day) the time when the sun is at a given altitude depends on the
@@ -214,10 +211,8 @@ def time_alt_first(
         actual = dhuhr - T
         return actual - guess
 
-    # start guesses at midnight local time and dhuhr
-    utc = dt.timezone(dt.timedelta())
-    utc_midnight = dt.datetime(date.year, date.month, date.day, 0, tzinfo=utc)
-    guess1 = utc_midnight - dt.timedelta(hours=longitude/15)
+    # start guesses at dhuhr and 12 hours before dhuhr
+    guess1 = dhuhr - dt.timedelta(hours=12)
     guess2 = dhuhr
 
     return linear_interpolation(calc_difference, guess1, guess2)
@@ -225,7 +220,6 @@ def time_alt_first(
 
 def time_sf_first(
     date: dt.date,
-    timezone: dt.tzinfo,
     shadow_factor: float,
     longitude: float,
     latitude: float,
@@ -241,9 +235,10 @@ def time_sf_first(
         latitude (float): The latitude in degrees North
 
     Returns:
-        datetime: The time immediately before dhuhr when shadow length is as given
+        datetime: The time immediately before dhuhr when shadow length is as
+            given, in utc timezone
     """
-    dhuhr = calc_dhuhr(date, timezone, longitude)
+    dhuhr = calc_dhuhr(date, longitude)
 
     # the declination depends on the date (and therefore changes slightly over
     # the day) the time when the sun is at a given altitude depends on the
@@ -267,10 +262,8 @@ def time_sf_first(
         actual = dhuhr - T
         return actual - guess
 
-    # start guesses at midnight local time and dhuhr
-    utc = dt.timezone(dt.timedelta())
-    utc_midnight = dt.datetime(date.year, date.month, date.day, 0, tzinfo=utc)
-    guess1 = utc_midnight - dt.timedelta(hours=longitude/15)
+    # start guesses at dhuhr and 12 hours before dhuhr
+    guess1 = dhuhr - dt.timedelta(hours=12)
     guess2 = dhuhr
 
     return linear_interpolation(calc_difference, guess1, guess2)

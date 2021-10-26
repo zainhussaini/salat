@@ -65,7 +65,7 @@ prayer_times = pt.calc_times(date, eastern, longitude, latitude)
 # print in a table
 table = [["Name", "Time"]]
 for name, time in prayer_times.items():
-    readable_time = time.astimezone(eastern).strftime("%m/%d/%Y, %H:%M:%S")
+    readable_time = time.strftime("%m/%d/%Y, %H:%M:%S")
     table.append([name, readable_time])
 print(tabulate.tabulate(table, headers='firstrow'))
 ```
