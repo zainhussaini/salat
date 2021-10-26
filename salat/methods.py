@@ -1,6 +1,7 @@
 from enum import Enum, auto, unique
 import datetime as dt
 import math
+import hijri_converter
 
 from .calculations import time_alt_first, time_sf_first, calc_dhuhr
 
@@ -12,6 +13,7 @@ class CalculationMethod(Enum):
     EGYPT = auto()
     TEHRAN = auto()
     JAFARI = auto()
+    MAKKAH = auto()
 
 
 @unique
@@ -94,7 +96,9 @@ class GeneralMethod:
         isha = dhuhr + (dhuhr - first)
 
         next_date = date + dt.timedelta(days=1)
-        next_sunrise = time_alt_first(next_date, timezone, sunset_altitude, longitude, latitude)
+        next_sunrise = time_alt_first(
+            next_date, timezone, sunset_altitude, longitude, latitude
+        )
         midnight = maghrib + (next_sunrise - maghrib) / 2
 
         times = {
@@ -110,10 +114,14 @@ class GeneralMethod:
 
 
 class TehranMethod(GeneralMethod):
+    """Uses Fajr angle 17.7 deg, Isha angle 14 deg"""
+
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
         super().__init__(17.7, 14, asr_method=asr_method)
 
-    def calc_times(self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float):
+    def calc_times(
+        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
+    ):
         magrib_altitude = math.radians(4.5)
 
         general_times = super().calc_times(date, timezone, longitude, latitude)
@@ -127,7 +135,9 @@ class TehranMethod(GeneralMethod):
 
         # midnight is different, it is between sunset and fajr
         next_date = date + dt.timedelta(days=1)
-        next_fajr = time_alt_first(next_date, timezone, self.fajr_altitude, longitude, latitude)
+        next_fajr = time_alt_first(
+            next_date, timezone, self.fajr_altitude, longitude, latitude
+        )
         midnight = sunset + (next_fajr - sunset) / 2
         general_times["midnight"] = midnight
 
@@ -135,10 +145,14 @@ class TehranMethod(GeneralMethod):
 
 
 class JafariMethod(GeneralMethod):
+    """Uses Fajr angle 16 deg, Isha angle 14 deg, and Maghrib angle 4 deg"""
+
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
         super().__init__(16, 14, asr_method=asr_method)
 
-    def calc_times(self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float):
+    def calc_times(
+        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
+    ):
         magrib_altitude = math.radians(4)
 
         general_times = super().calc_times(date, timezone, longitude, latitude)
@@ -152,9 +166,38 @@ class JafariMethod(GeneralMethod):
 
         # midnight is different, it is between sunset and fajr
         next_date = date + dt.timedelta(days=1)
-        next_fajr = time_alt_first(next_date, timezone, self.fajr_altitude, longitude, latitude)
+        next_fajr = time_alt_first(
+            next_date, timezone, self.fajr_altitude, longitude, latitude
+        )
         midnight = sunset + (next_fajr - sunset) / 2
         general_times["midnight"] = midnight
+
+        return general_times
+
+
+class MakkahMethod(GeneralMethod):
+    """Uses Fajr angle 18.5 deg, Isha 90 minutes after Maghrib in general and
+    120 during Ramadan
+
+    Note that Ramadan is calculated with additional dependency hijri-converter
+    """
+
+    def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
+        # Isha angle not used, so use Fajr angle as substitute
+        super().__init__(18.5, 18.5, asr_method=asr_method)
+
+    def calc_times(
+        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
+    ):
+        general_times = super().calc_times(date, timezone, longitude, latitude)
+
+        hijri_date = hijri_converter.Gregorian(
+            date.year, date.month, date.day
+        ).to_hijri()
+        if hijri_date.month == 9:
+            general_times["isha"] = general_times["maghrib"] + dt.timedelta(minutes=120)
+        else:
+            general_times["isha"] = general_times["maghrib"] + dt.timedelta(minutes=90)
 
         return general_times
 
@@ -184,5 +227,7 @@ def PrayerTimes(method=CalculationMethod.MWL, asr=AsrMethod.STANDARD) -> General
         return TehranMethod(asr)
     elif method == CalculationMethod.JAFARI:
         return JafariMethod(asr)
+    elif method == CalculationMethod.MAKKAH:
+        return MakkahMethod(asr)
     else:
         raise ValueError(f"Unknown CalculationMethod {method}")

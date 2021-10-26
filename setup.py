@@ -1,4 +1,5 @@
 import pathlib
+import hijri_converter
 from setuptools import setup
 
 # The directory containing this file
@@ -25,5 +26,5 @@ setup(
     ],
     packages=["salat"],
     include_package_data=True,
-    install_requires=[],
+    install_requires=["hijri-converter"],
 )

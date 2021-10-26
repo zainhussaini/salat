@@ -245,9 +245,10 @@ def time_sf_first(
     """
     dhuhr = calc_dhuhr(date, timezone, longitude)
 
-    # the declination depends on the date (and therefore changes slightly over the day)
-    # the time when the sun is at a given altitude depends on the declination
-    # therefore this is a circular dependency, so use interpolation method to find solution
+    # the declination depends on the date (and therefore changes slightly over
+    # the day) the time when the sun is at a given altitude depends on the
+    # declination therefore this is a circular dependency, so use interpolation
+    # method to find solution
 
     # x is the datetime guess
     # f(x) is the difference between time calculated using the guess's
