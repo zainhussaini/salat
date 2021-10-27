@@ -65,7 +65,7 @@ prayer_times = pt.calc_times(date, eastern, longitude, latitude)
 # print in a table
 table = [["Name", "Time"]]
 for name, time in prayer_times.items():
-    readable_time = time.strftime("%m/%d/%Y, %H:%M:%S")
+    readable_time = time.strftime("%m/%d/%Y, %I:%M:%S %p %Z")
     table.append([name, readable_time])
 print(tabulate.tabulate(table, headers='firstrow'))
 ```
@@ -73,14 +73,14 @@ print(tabulate.tabulate(table, headers='firstrow'))
 Output
 ```
 Name      Time
---------  --------------------
-fajr      01/01/2000, 05:58:15
-sunrise   01/01/2000, 07:20:09
-dhuhr     01/01/2000, 11:59:25
-asr       01/01/2000, 14:20:54
-maghrib   01/01/2000, 16:38:42
-isha      01/01/2000, 18:00:36
-midnight  01/01/2000, 23:59:29
+--------  ---------------------------
+fajr      01/01/2000, 05:58:15 AM EST
+sunrise   01/01/2000, 07:20:09 AM EST
+dhuhr     01/01/2000, 11:59:25 AM EST
+asr       01/01/2000, 02:20:58 PM EST
+maghrib   01/01/2000, 04:38:50 PM EST
+isha      01/01/2000, 06:00:44 PM EST
+midnight  01/01/2000, 11:59:33 PM EST
 ```
 
 ## Planned features
