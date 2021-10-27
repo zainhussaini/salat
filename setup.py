@@ -27,4 +27,5 @@ setup(
     packages=["salat"],
     include_package_data=True,
     install_requires=["hijri-converter"],
+    extras_requires={"full": ["hijri-converter"]},
 )

@@ -1,9 +1,8 @@
 from enum import Enum, auto, unique
 import datetime as dt
 import math
-import hijri_converter
 
-from .calculations import time_alt_first, time_sf_first, calc_dhuhr
+from .calculations import time_zenith, time_altitude, time_shadow_factor
 
 
 @unique
@@ -62,42 +61,36 @@ class GeneralMethod:
 
         self.fajr_altitude = math.radians(fajr_altitude_deg)
         self.isha_altitude = math.radians(isha_altitude_deg)
+        self.sunset_altitude = math.radians(0.833)
 
     def calc_times(
-        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
+        self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float
     ) -> "dict[str, dt.datetime]":
         """Calculates prayer times including sunrise and midnight.
 
         Args:
             date (dt.date): Date to calculate the prayer times for. Note that
                 "midnight" might be past 12 am therefore on next day
-            timezone (dt.timezone): Timezone of the output datetimes
+            timezone (dt.tzinfo): Timezone of the output datetimes
             longitude (float): Longitude of position in degrees East
             latitude (float): Latitude of position in degrees North
 
         Returns:
             dict[str, dt.datetime]: dictionary from time of interest (string) to time
         """
-        sunset_altitude = math.radians(0.833)
+        local_noon = dt.datetime(date.year, date.month, date.day, 12).astimezone(timezone)
 
-        fajr = time_alt_first(date, self.fajr_altitude, longitude, latitude)
+        fajr = time_altitude(local_noon, self.fajr_altitude, longitude, latitude, rising=True)
+        sunrise = time_altitude(local_noon, self.sunset_altitude, longitude, latitude, rising=True)
+        dhuhr = time_zenith(local_noon, longitude)
+        asr = time_shadow_factor(local_noon, self.shadow_factor, longitude, latitude, rising=False)
+        maghrib = time_altitude(local_noon, self.sunset_altitude, longitude, latitude, rising=False)
+        isha = time_altitude(local_noon, self.isha_altitude, longitude, latitude, rising=False)
 
-        sunrise = time_alt_first(date, sunset_altitude, longitude, latitude)
-
-        dhuhr = calc_dhuhr(date, longitude)
-
-        first = time_sf_first(date, self.shadow_factor, longitude, latitude)
-        asr = dhuhr + (dhuhr - first)
-
-        first = time_alt_first(date, sunset_altitude, longitude, latitude)
-        maghrib = dhuhr + (dhuhr - first)
-
-        first = time_alt_first(date, self.isha_altitude, longitude, latitude)
-        isha = dhuhr + (dhuhr - first)
-
-        next_date = date + dt.timedelta(days=1)
-        next_sunrise = time_alt_first(next_date, sunset_altitude, longitude, latitude)
-        midnight = maghrib + (next_sunrise - maghrib) / 2
+        sunset = maghrib
+        next_local_noon = local_noon + dt.timedelta(days=1)
+        next_sunrise = time_altitude(next_local_noon, self.sunset_altitude, longitude, latitude, rising=True)
+        midnight = sunset + (next_sunrise - sunset) / 2
 
         times = {
             "fajr": fajr,
@@ -115,88 +108,91 @@ class GeneralMethod:
 
 
 class TehranMethod(GeneralMethod):
-    """Uses Fajr angle 17.7 deg, Isha angle 14 deg"""
+    """Uses Fajr angle 17.7 deg, Isha angle 14 deg, Maghrib angle 4.5, midnight
+    between sunset and Fajr"""
 
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
         super().__init__(17.7, 14, asr_method=asr_method)
 
-    def calc_times(
-        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
-    ):
+    def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
+        utc_noon = dt.datetime(date.year, date.month, date.day, 12)
+        utcoffset = timezone.utcoffset(dt.datetime(date.year, date.month, date.day, 12))
+        local_noon = timezone.fromutc(utc_noon) - utcoffset
+
         magrib_altitude = math.radians(4.5)
+        times = super().calc_times(date, longitude, latitude)
+        sunset = times["maghrib"]
 
-        general_times = super().calc_times(date, longitude, latitude)
-        sunset = general_times["maghrib"]
-
-        # maghrib time is different, fajr time stays the same
-        first = time_alt_first(date, magrib_altitude, longitude, latitude)
-        dhuhr = general_times["dhuhr"]
-        maghrib = dhuhr + (dhuhr - first)
-        general_times["maghrib"] = maghrib
+        # maghrib time is different
+        maghrib = time_altitude(local_noon, magrib_altitude, longitude, latitude, rising=False)
+        times["maghrib"] = maghrib
 
         # midnight is different, it is between sunset and fajr
-        next_date = date + dt.timedelta(days=1)
-        next_fajr = time_alt_first(next_date, self.fajr_altitude, longitude, latitude)
+        next_local_noon = local_noon + dt.timedelta(days=1)
+        next_fajr = time_altitude(next_local_noon, self.fajr_altitude, longitude, latitude, rising=True)
         midnight = sunset + (next_fajr - sunset) / 2
-        general_times["midnight"] = midnight
+        times["midnight"] = midnight
 
-        return general_times
+        return times
 
 
 class JafariMethod(GeneralMethod):
-    """Uses Fajr angle 16 deg, Isha angle 14 deg, and Maghrib angle 4 deg"""
+    """Uses Fajr angle 16 deg, Isha angle 14 deg, Maghrib angle 4 deg, midnight
+    between sunset and Fajr"""
 
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
         super().__init__(16, 14, asr_method=asr_method)
 
-    def calc_times(
-        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
-    ):
+    def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
+        utc_noon = dt.datetime(date.year, date.month, date.day, 12)
+        utcoffset = timezone.utcoffset(dt.datetime(date.year, date.month, date.day, 12))
+        local_noon = timezone.fromutc(utc_noon) - utcoffset
+
         magrib_altitude = math.radians(4)
+        times = super().calc_times(date, longitude, latitude)
+        sunset = times["maghrib"]
 
-        general_times = super().calc_times(date, timezone, longitude, latitude)
-        sunset = general_times["maghrib"]
-
-        # maghrib time is different, fajr time stays the same
-        first = time_alt_first(date, magrib_altitude, longitude, latitude)
-        dhuhr = general_times["dhuhr"]
-        maghrib = dhuhr + (dhuhr - first)
-        general_times["maghrib"] = maghrib
+        # maghrib time is different
+        maghrib = time_altitude(local_noon, magrib_altitude, longitude, latitude, rising=False)
+        times["maghrib"] = maghrib
 
         # midnight is different, it is between sunset and fajr
-        next_date = date + dt.timedelta(days=1)
-        next_fajr = time_alt_first(next_date, self.fajr_altitude, longitude, latitude)
+        next_local_noon = local_noon + dt.timedelta(days=1)
+        next_fajr = time_altitude(next_local_noon, self.fajr_altitude, longitude, latitude, rising=True)
         midnight = sunset + (next_fajr - sunset) / 2
-        general_times["midnight"] = midnight
+        times["midnight"] = midnight
 
-        return general_times
+        return times
 
 
 class MakkahMethod(GeneralMethod):
     """Uses Fajr angle 18.5 deg, Isha 90 minutes after Maghrib in general and
-    120 during Ramadan
+    120 during Ramadan.
 
     Note that Ramadan is calculated with additional dependency hijri-converter
     """
 
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
+        try:
+            import hijri_converter
+        except ImportError:
+            raise ImportError("Install hijri-converter to use MakkahMethod")
+
         # Isha angle not used, so use Fajr angle as substitute
         super().__init__(18.5, 18.5, asr_method=asr_method)
 
-    def calc_times(
-        self, date: dt.date, timezone: dt.timezone, longitude: float, latitude: float
-    ):
-        general_times = super().calc_times(date, timezone, longitude, latitude)
+    def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
+        from hijri_converter import Gregorian
 
-        hijri_date = hijri_converter.Gregorian(
-            date.year, date.month, date.day
-        ).to_hijri()
+        times = super().calc_times(date, timezone, longitude, latitude)
+
+        hijri_date = Gregorian(date.year, date.month, date.day).to_hijri()
         if hijri_date.month == 9:
-            general_times["isha"] = general_times["maghrib"] + dt.timedelta(minutes=120)
+            times["isha"] = times["maghrib"] + dt.timedelta(minutes=120)
         else:
-            general_times["isha"] = general_times["maghrib"] + dt.timedelta(minutes=90)
+            times["isha"] = times["maghrib"] + dt.timedelta(minutes=90)
 
-        return general_times
+        return times
 
 
 def PrayerTimes(method=CalculationMethod.MWL, asr=AsrMethod.STANDARD) -> GeneralMethod:

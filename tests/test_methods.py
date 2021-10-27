@@ -1,20 +1,32 @@
+from time import daylight
 import salat
 import datetime as dt
 import math
 import pytz
 
 
-def time_close(time1: dt.datetime, time2: dt.datetime) -> bool:
-    """Checks that two datetimes are within 1 second of each other
+KAABAH_LONG_LAT = (39.8262, 21.4225)
+EPOCH = dt.date(2021, 1, 1)
+TIMEZONES = [
+    dt.timezone.utc,
+    dt.timezone(dt.timedelta(), "UTC"),
+    dt.timezone(dt.timedelta(hours=3), "AST"),
+    dt.timezone(dt.timedelta(hours=-5), "EST"),
+    pytz.timezone("US/Eastern"),
+]
+
+
+def time_close(time1: dt.datetime, time2: dt.datetime, delta: dt.timedelta) -> bool:
+    """Checks that two datetimes are within delta of each other
 
     Args:
         time1 (dt.datetime): first datetime
         time2 (dt.datetime): second datetime
 
     Returns:
-        bool: True if both datetimes are within 1 second of each other
+        bool: True if both datetimes are within delta second of each other
     """
-    if not math.isclose((time1 - time2).total_seconds(), 0, rel_tol=0, abs_tol=1):
+    if not math.isclose((time1 - time2).total_seconds(), 0, rel_tol=0, abs_tol=delta.total_seconds()):
         print(time1)
         print(time2)
         print(time1 - time2)
@@ -23,61 +35,78 @@ def time_close(time1: dt.datetime, time2: dt.datetime) -> bool:
         return True
 
 
-def get_pt_epoch():
-    pt = salat.PrayerTimes(salat.CalculationMethod.ISNA, salat.AsrMethod.STANDARD)
+def parse_line(line: str, date: dt.date, timezone: dt.tzinfo):
+    # line = "05:53 AM  06:58 AM  12:24 PM  03:29 PM  05:50 PM  06:56 PM"
+    times = [a.strip() for a in line.split("  ")]
 
-    # January 1, 2000
-    date = dt.date(2000, 1, 1)
+    hour_minute = []
+    for time in times:
+        h, mp = time.split(":")
+        m, p = mp.split(" ")
+        if p.upper() == "AM":
+            hour = int(h)
+            if h == "12":
+                hour = 0
+        elif p.upper() == "PM":
+            hour = int(h) + 12
+            if h == "12":
+                hour = 12
+        minute = int(m)
+        hour_minute.append((hour, minute))
+    assert len(hour_minute) == 6
 
-    # address of NYC
-    longitude = -74.0060 # degrees East
-    latitude = 40.7128 # degrees North
+    true_times = []
+    for hour, minute in hour_minute:
+        print(hour, minute)
+        true_times.append(dt.datetime(date.year, date.month, date.day, hour, minute, tzinfo=timezone))
+    assert len(true_times) == 6
 
-    # EST timezone (UTC offset of -5 hours)
-    eastern = dt.timezone(dt.timedelta(hours=-5), "EST")
-
-    return (pt, date, longitude, latitude, eastern)
-
-
-def check_times_epoch(prayer_times):
-    # EST timezone (UTC offset of -5 hours)
-    eastern = dt.timezone(dt.timedelta(hours=-5), "EST")
-
-    fajr = dt.datetime(2000, 1, 1, 5, 58, 15, tzinfo=eastern)
-    assert time_close(prayer_times["fajr"], fajr)
-
-    dhuhr = dt.datetime(2000, 1, 1, 11, 59, 25, tzinfo=eastern)
-    assert time_close(prayer_times["dhuhr"], dhuhr)
-
-    asr = dt.datetime(2000, 1, 1, 14, 20, 54, tzinfo=eastern)
-    assert time_close(prayer_times["asr"], asr)
-
-    maghrib = dt.datetime(2000, 1, 1, 16, 38, 42, tzinfo=eastern)
-    assert time_close(prayer_times["maghrib"], maghrib)
-
-    isha = dt.datetime(2000, 1, 1, 18, 0, 36, tzinfo=eastern)
-    assert time_close(prayer_times["isha"], isha)
-
-    midnight = dt.datetime(2000, 1, 1, 23, 59, 29, tzinfo=eastern)
-    assert time_close(prayer_times["midnight"], midnight)
+    names = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"]
+    return {names[i]: true_times[i] for i in range(6)}
 
 
-def test_ISNA():
-    pt, date, longitude, latitude, eastern = get_pt_epoch()
-    prayer_times = pt.calc_times(date, eastern, longitude, latitude)
-    check_times_epoch(prayer_times)
+def test_ISNA_Kaaba_epoch():
+    long, lat = KAABAH_LONG_LAT
+    calc_method = salat.CalculationMethod.ISNA
+    asr_method = salat.AsrMethod.STANDARD
+    date = EPOCH
+
+    for tz in TIMEZONES:
+        pt = salat.PrayerTimes(calc_method, asr_method)
+        times = pt.calc_times(date, tz, long, lat)
+
+        # https://www.islamicfinder.org/prayer-times/
+        line = "05:53 AM   06:58 AM   12:24 PM   03:29 PM   05:50 PM   06:56 PM"
+        timezone = dt.timezone(dt.timedelta(hours=3))
+        true_times = parse_line(line, date, timezone)
+
+        delta = dt.timedelta(minutes=1)
+        for name in true_times:
+            assert time_close(times[name], true_times[name], delta)
 
 
-def test_pytz():
-    pt, date, longitude, latitude, eastern = get_pt_epoch()
-    eastern = pytz.timezone('US/Eastern')
-    prayer_times = pt.calc_times(date, eastern, longitude, latitude)
-    # for a, b in prayer_times.items():
-    #     print(a, b)
-    # assert False
-    check_times_epoch(prayer_times)
+def test_MWL_Kaaba_epoch():
+    long, lat = KAABAH_LONG_LAT
+    calc_method = salat.CalculationMethod.MWL
+    asr_method = salat.AsrMethod.STANDARD
+    date = EPOCH
+
+    for tz in TIMEZONES:
+        pt = salat.PrayerTimes(calc_method, asr_method)
+        times = pt.calc_times(date, tz, long, lat)
+
+        # https://www.islamicfinder.org/prayer-times/
+        line = "05:40 AM   06:58 AM   12:24 PM   03:29 PM   05:50 PM   07:05 PM"
+        timezone = dt.timezone(dt.timedelta(hours=3))
+        true_times = parse_line(line, date, timezone)
+
+        delta = dt.timedelta(minutes=1)
+        for name in true_times:
+            assert time_close(times[name], true_times[name], delta)
 
 
-def test_DS_transition():
-    """Test that times are accurate at day with daylight savings transition"""
-    pass
+# TODO:
+# 1. check locations where sign if longitude and timezone offset are different (ie. long = -170, timezone= +12)
+# 2. check daylight savings time transition points
+# 4. check negative latitudes
+# 3. check high latitudes
