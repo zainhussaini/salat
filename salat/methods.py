@@ -115,12 +115,10 @@ class TehranMethod(GeneralMethod):
         super().__init__(17.7, 14, asr_method=asr_method)
 
     def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
-        utc_noon = dt.datetime(date.year, date.month, date.day, 12)
-        utcoffset = timezone.utcoffset(dt.datetime(date.year, date.month, date.day, 12))
-        local_noon = timezone.fromutc(utc_noon) - utcoffset
+        local_noon = dt.datetime(date.year, date.month, date.day, 12).astimezone(timezone)
 
         magrib_altitude = math.radians(4.5)
-        times = super().calc_times(date, longitude, latitude)
+        times = super().calc_times(date, timezone, longitude, latitude)
         sunset = times["maghrib"]
 
         # maghrib time is different
@@ -144,12 +142,10 @@ class JafariMethod(GeneralMethod):
         super().__init__(16, 14, asr_method=asr_method)
 
     def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
-        utc_noon = dt.datetime(date.year, date.month, date.day, 12)
-        utcoffset = timezone.utcoffset(dt.datetime(date.year, date.month, date.day, 12))
-        local_noon = timezone.fromutc(utc_noon) - utcoffset
+        local_noon = dt.datetime(date.year, date.month, date.day, 12).astimezone(timezone)
 
         magrib_altitude = math.radians(4)
-        times = super().calc_times(date, longitude, latitude)
+        times = super().calc_times(date, timezone, longitude, latitude)
         sunset = times["maghrib"]
 
         # maghrib time is different

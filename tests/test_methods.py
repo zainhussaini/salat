@@ -6,7 +6,7 @@ import pytz
 
 
 KAABAH_LONG_LAT = (39.8262, 21.4225)
-EPOCH = dt.date(2021, 1, 1)
+EPOCH = dt.date(2000, 1, 1)
 TIMEZONES = [
     dt.timezone.utc,
     dt.timezone(dt.timedelta(), "UTC"),
@@ -24,7 +24,7 @@ def time_close(time1: dt.datetime, time2: dt.datetime, delta: dt.timedelta) -> b
         time2 (dt.datetime): second datetime
 
     Returns:
-        bool: True if both datetimes are within delta second of each other
+        bool: True if both datetimes are within delta of each other
     """
     if not math.isclose((time1 - time2).total_seconds(), 0, rel_tol=0, abs_tol=delta.total_seconds()):
         print(time1)
@@ -57,7 +57,6 @@ def parse_line(line: str, date: dt.date, timezone: dt.tzinfo):
 
     true_times = []
     for hour, minute in hour_minute:
-        print(hour, minute)
         true_times.append(dt.datetime(date.year, date.month, date.day, hour, minute, tzinfo=timezone))
     assert len(true_times) == 6
 
@@ -103,6 +102,70 @@ def test_MWL_Kaaba_epoch():
         delta = dt.timedelta(minutes=1)
         for name in true_times:
             assert time_close(times[name], true_times[name], delta)
+
+
+def test_Makkah_Kaaba_epoch():
+    long, lat = KAABAH_LONG_LAT
+    calc_method = salat.CalculationMethod.MAKKAH
+    asr_method = salat.AsrMethod.STANDARD
+    date = EPOCH
+
+    for tz in TIMEZONES:
+        pt = salat.PrayerTimes(calc_method, asr_method)
+        times = pt.calc_times(date, tz, long, lat)
+
+        # https://www.islamicfinder.org/prayer-times/
+        line = "05:37 AM  06:58 AM  12:24 PM  03:29 PM  05:50 PM  07:50 PM"
+        timezone = dt.timezone(dt.timedelta(hours=3))
+        true_times = parse_line(line, date, timezone)
+
+        delta = dt.timedelta(minutes=1)
+        for name in true_times:
+            print(name)
+            assert time_close(times[name], true_times[name], delta)
+
+
+def test_Makkah_Kaaba_Jan30_2000():
+    # after Ramadan
+    long, lat = KAABAH_LONG_LAT
+    calc_method = salat.CalculationMethod.MAKKAH
+    asr_method = salat.AsrMethod.STANDARD
+    date = dt.date(2000, 1, 30)
+
+    for tz in TIMEZONES:
+        pt = salat.PrayerTimes(calc_method, asr_method)
+        times = pt.calc_times(date, tz, long, lat)
+
+        # https://www.islamicfinder.org/prayer-times/
+        line = "05:41 AM  06:59 AM  12:34 PM  03:46 PM  06:09 PM  07:39 PM"
+        timezone = dt.timezone(dt.timedelta(hours=3))
+        true_times = parse_line(line, date, timezone)
+
+        delta = dt.timedelta(minutes=1)
+        for name in true_times:
+            assert time_close(times[name], true_times[name], delta)
+
+
+def test_Jafari_Kaaba_epoch():
+    long, lat = KAABAH_LONG_LAT
+    calc_method = salat.CalculationMethod.JAFARI
+    asr_method = salat.AsrMethod.STANDARD
+    date = EPOCH
+
+    for tz in TIMEZONES:
+        pt = salat.PrayerTimes(calc_method, asr_method)
+        times = pt.calc_times(date, tz, long, lat)
+
+        # https://www.islamicfinder.org/prayer-times/
+        # Note: this website does not adjust Maghrib angle correctly
+        line = "05:49 AM  06:58 AM  12:24 PM  03:29 PM  05:50 PM  06:51 PM"
+        timezone = dt.timezone(dt.timedelta(hours=3))
+        true_times = parse_line(line, date, timezone)
+
+        delta = dt.timedelta(minutes=1)
+        for name in true_times:
+            if name != "maghrib":
+                assert time_close(times[name], true_times[name], delta)
 
 
 # TODO:
