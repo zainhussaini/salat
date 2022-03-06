@@ -13,6 +13,7 @@ class CalculationMethod(Enum):
     TEHRAN = auto()
     JAFARI = auto()
     MAKKAH = auto()
+    KARACHI = auto()
 
 
 @unique
@@ -196,7 +197,7 @@ def PrayerTimes(method=CalculationMethod.MWL, asr=AsrMethod.STANDARD) -> General
 
     Args:
         method (CalculationMethod): Method to use for general calculations.
-            Defaults to CalculationMethod.ISNA.
+            Defaults to CalculationMethod.MWL.
         asr (AsrMethod): Method to determine Asr time. Defaults to
             AsrMethod.STANDARD.
 
@@ -212,6 +213,8 @@ def PrayerTimes(method=CalculationMethod.MWL, asr=AsrMethod.STANDARD) -> General
         return GeneralMethod(18, 17, asr)
     elif method == CalculationMethod.EGYPT:
         return GeneralMethod(19.5, 17.5, asr)
+    elif method == CalculationMethod.KARACHI:
+        return GeneralMethod(18, 18, asr)
     elif method == CalculationMethod.TEHRAN:
         return TehranMethod(asr)
     elif method == CalculationMethod.JAFARI:

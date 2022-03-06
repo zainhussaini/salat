@@ -33,9 +33,11 @@ This package has the following goals:
 This package supports the following calculation methods:
 1. ISNA (Islamic Society of North America)
 2. MWL (Muslim World League)
-3. Egypt (Egyptian General Authority of Survey)
-4. Tehran (Institute of Geophysics, University of Tehran)
-5. Jafari (Shia Ithna Ashari, Leva Research Institute, Qum)
+3. EGYPT (Egyptian General Authority of Survey)
+4. TEHRAN (Institute of Geophysics, University of Tehran)
+5. JAFARI (Shia Ithna Ashari, Leva Research Institute, Qum)
+6. MAKKAH (Umm al-Qura)
+7. KARACHI (University Of Islamic Sciences, Karachi)
 
 There are many more methods in use around the world, so if there's any missing that you would like to see please submit an issue.
 
@@ -52,13 +54,18 @@ import datetime as dt
 import pytz
 import tabulate
 
+
+# set up calculation methods
 pt = salat.PrayerTimes(salat.CalculationMethod.ISNA, salat.AsrMethod.STANDARD)
+
 # January 1, 2000
 date = dt.date(2000, 1, 1)
-# address of NYC
+
+# using NYC
 longitude = -74.0060 # degrees East
 latitude = 40.7128 # degrees North
 eastern = pytz.timezone('US/Eastern')
+
 # calculate times
 prayer_times = pt.calc_times(date, eastern, longitude, latitude)
 
