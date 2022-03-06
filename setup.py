@@ -1,5 +1,4 @@
 import pathlib
-import hijri_converter
 from setuptools import setup
 
 # The directory containing this file
