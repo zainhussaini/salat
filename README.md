@@ -6,7 +6,7 @@ However with modern computation most Muslims use calculated prayer times to dete
 
 ## Prayer Times
 
-In general terms, the time range of a prayer is from it's start until the start of the next prayer, except for Fajr which ends at sunrise and Isha which is recommended to end before midnight. The start of the prayer time intervals are the following:
+In general terms, the time range of a prayer is from it's start until the start of the next prayer, except for Fajr which ends at sunrise. The start of the prayer time intervals are the following:
 
 | Name | Start of Time Range |
 |------|------------|
@@ -16,7 +16,6 @@ In general terms, the time range of a prayer is from it's start until the start 
 | Asr | When the length of a shadow is the same as the length of the object (or with Hanafi method, twice the length of the object) plus its length when the Sun is at zenith |
 | Maghrib | Sunset |
 | Isha | When the red light of sunset is gone |
-| Midnight | Halfway point of the night. Note that this marks the recommended end of Isha |
 
 However there are various methods and standards for what exact times these general terms correspond to. For example, according to the Muslim World League, Fajr starts when the altitude of the Sun is 18 degrees below the horizon, while the Islamic Society of North America determined it's when the sun is 15 degrees below the horizon.
 
@@ -79,15 +78,14 @@ print(tabulate.tabulate(table, headers='firstrow'))
 
 Output
 ```
-Name      Time
---------  ---------------------------
-fajr      01/01/2000, 05:58:15 AM EST
-sunrise   01/01/2000, 07:20:09 AM EST
-dhuhr     01/01/2000, 11:59:25 AM EST
-asr       01/01/2000, 02:20:58 PM EST
-maghrib   01/01/2000, 04:38:50 PM EST
-isha      01/01/2000, 06:00:44 PM EST
-midnight  01/01/2000, 11:59:33 PM EST
+Name     Time
+-------  ---------------------------
+fajr     01/01/2000, 05:58:15 AM EST
+sunrise  01/01/2000, 07:20:09 AM EST
+dhuhr    01/01/2000, 11:59:25 AM EST
+asr      01/01/2000, 02:20:58 PM EST
+maghrib  01/01/2000, 04:38:50 PM EST
+isha     01/01/2000, 06:00:44 PM EST
 ```
 
 ## Planned features

@@ -6,15 +6,14 @@ import math
 def eot_decl(time: dt.datetime) -> "tuple[dt.timedelta, float]":
     """Calculates the equation of time and Sun's declination at a given time.
 
-    The term equation of time referes to the difference between mean solar time
-    (what you would get if the sun had uniform motion along the celestial
-    equator) and apparent solar time (what you would get by measuing the angle
-    of the sun and calculating the time). This is because the ecliptic is tilted
-    relative to Earth's equator and the Earth's orbit has eccentricity. See
-    https://en.wikipedia.org/wiki/Equation_of_time
+    The term equation of time referes to the difference between mean solar time (what you would get
+    if the sun had uniform motion along the celestial equator) and apparent solar time (what you
+    would get by measuing the angle of the sun and calculating the time). This is because the
+    ecliptic is tilted relative to Earth's equator and the Earth's orbit has eccentricity.
+    See https://en.wikipedia.org/wiki/Equation_of_time
 
-    The declination of the sun is the angle between the Sun's rays and the plane
-    of Earth's equator. It's periodic with the orbit of Earth around the Sun.
+    The declination of the sun is the angle between the Sun's rays and the plane of Earth's equator.
+    It's periodic with the orbit of Earth around the Sun.
     See https://en.wikipedia.org/wiki/Position_of_the_Sun
 
     Args:
@@ -25,7 +24,7 @@ def eot_decl(time: dt.datetime) -> "tuple[dt.timedelta, float]":
         float: declination of sun (in radians)
     """
     # January 1, 2000 at noon in UTC
-    utc = dt.timezone(dt.timedelta())
+    utc = dt.timezone.utc
     epoch = dt.datetime(2000, 1, 1, 12, tzinfo=utc)
     days_since_epoch = (time - epoch).total_seconds() / 60 / 60 / 24
 
@@ -44,7 +43,7 @@ def eot_decl(time: dt.datetime) -> "tuple[dt.timedelta, float]":
     D = days_since_epoch % TY
     M = MD + 2 * math.pi * D / TY
     M = M % (2 * math.pi)
-    E = KeplerSolve(M, e)
+    E = kepler_solve(M, e)
 
     nu = math.acos((math.cos(E) - e) / (1 - e * math.cos(E)))
     if E > math.pi:
@@ -80,7 +79,7 @@ def eot_decl(time: dt.datetime) -> "tuple[dt.timedelta, float]":
     return eot, decl
 
 
-def KeplerSolve(M: float, e: float) -> float:
+def kepler_solve(M: float, e: float) -> float:
     """Solves Kepler's equation inverse problem for elliptical orbits.
 
     Args:
@@ -102,8 +101,8 @@ def KeplerSolve(M: float, e: float) -> float:
 
 
 def calc_altitude(shadow_factor: float, declination: float, latitude: float) -> float:
-    """Calculates altitude when shadow of object is show_factor times the height
-    of the object.
+    """Calculates altitude when shadow of object is shadow_factor times the height of the object
+    plus the length at zenith.
 
     Args:
         shadow_factor (float): Multiplication factor from height to shadow length
@@ -115,7 +114,11 @@ def calc_altitude(shadow_factor: float, declination: float, latitude: float) -> 
     """
     phi = math.radians(latitude)
     delta = declination
-    alt = math.atan(1 / (shadow_factor + math.tan(phi - delta)))
+
+    # See https://en.wikipedia.org/wiki/Salah_times#Time_calculation
+    shadow_factor_zenith = abs(math.tan(phi - delta))
+    alt = math.atan(1 / (shadow_factor + shadow_factor_zenith))
+
     return alt
 
 
@@ -123,7 +126,7 @@ def timedelta_at_altitude(altitude: float, declination: float, latitude: float) 
     """Calculates the difference from zenith to the time when Sun is at altitude.
 
     Args:
-        altitude (float): Altitude of sun in radians
+        altitude (float): Altitude of sun above the horizon in radians
         declination (float): Declination of sun in radians
         latitude (float): Latitude of position on Earth in degrees North
 
@@ -134,7 +137,7 @@ def timedelta_at_altitude(altitude: float, declination: float, latitude: float) 
     phi = math.radians(latitude)
     delta = declination
 
-    numerator = -math.sin(alpha) - math.sin(phi) * math.sin(delta)
+    numerator = math.sin(alpha) - math.sin(phi) * math.sin(delta)
     denominator = math.cos(phi) * math.cos(delta)
     cos_hour_rad = numerator / denominator
     if cos_hour_rad < -1 or cos_hour_rad > 1:
@@ -154,13 +157,12 @@ def linear_interpolation(
 ):
     """Uses linear interpolation to calculate when diff_function ouputs zero.
 
-    More specifically, this uses the secant method to calculate guess such that
-    diff_function(guess) is zero. For more information about the secant method
-    see https://en.wikipedia.org/wiki/Secant_method
+    More specifically, this uses the secant method to calculate guess such that diff_function(guess)
+    is zero. For more information about the secant method
+    See https://en.wikipedia.org/wiki/Secant_method
 
     Args:
-        diff_function (Callable[[datetime, datetime], timedelta]): The
-            function to find the root for
+        diff_function (Callable[[datetime, datetime], timedelta]): The function to find the root for
         guess1 (datetime): First guess
         guess2 (datetime): Second guess (cannot be the same as first guess)
 
@@ -186,24 +188,20 @@ def linear_interpolation(
     return guess1
 
 
-def time_zenith(local_noon: dt.datetime, longitude: float) -> dt.datetime:
-    """Calculates time of Sun reaching it's zenith on date specified by local
-    noon time, at longitude
+def time_zenith(date: dt.date, longitude: float) -> dt.datetime:
+    """Calculates time of Sun reaching its zenith on a date.
 
     Args:
-        local_noon (datetime): The datetime corresponding to noon in local timezone
+        date (date): The utc date for which the zenith should be found
         longitude (float): The longitude in degrees East
 
     Returns:
-        datetime: The specific time of zenith in same timezone as local_noon
+        datetime: The specific time of zenith. The zenith found will be the closest to utc noon on
+            the given date
     """
-    # local_noon = utc_noon + timezone_offset
-    # zenith = utc_noon + dt.timedelta(hours=longitude / 15) - eot
-    # find utc_noon such that dhuhr(utc_noon) is approx local_noon
-    utc_noon_approx = local_noon + dt.timedelta(hours=longitude / 15)
-    utc_noon_approx = utc_noon_approx.astimezone(dt.timezone.utc)
-    utcna = utc_noon_approx
-    utc_noon = dt.datetime(utcna.year, utcna.month, utcna.day, 12, tzinfo=dt.timezone.utc)
+    # Calculate when sun will be at zenith ignoring equation of time (eot)
+    utc_noon = dt.datetime(date.year, date.month, date.day, 12, tzinfo=dt.timezone.utc)
+    time_zenith_approx = utc_noon - dt.timedelta(hours=longitude/15)
 
     # The equation of time depends on the date (and therefore changes slightly
     # over the day) the time of zenith depends on the equation of time. therefore
@@ -220,67 +218,59 @@ def time_zenith(local_noon: dt.datetime, longitude: float) -> dt.datetime:
         """Using guess to calculate eot, calculate the time of dhuhr, and return
         difference between guess and calculated dhuhr.
         """
-        eot, declination = eot_decl(guess)
-        actual = utc_noon - dt.timedelta(hours=longitude / 15) - eot
+        eot, _ = eot_decl(guess)
+        actual = utc_noon - dt.timedelta(hours=longitude/15) - eot
         return actual - guess
 
-    # guess is when sun would be at zenith ignoring eot
-    guess = utc_noon - dt.timedelta(hours=longitude / 15)
     # eot is usually between -14 to +16 minutes, so bound that by guess1 and guess2
-    guess1 = guess - dt.timedelta(minutes=20)
-    guess2 = guess + dt.timedelta(minutes=20)
+    guess1 = time_zenith_approx - dt.timedelta(minutes=20)
+    guess2 = time_zenith_approx + dt.timedelta(minutes=20)
 
     return linear_interpolation(calc_difference, guess1, guess2)
 
 
 def time_altitude(
-    local_noon: dt.datetime,
+    zenith: dt.datetime,
     altitude: float,
-    longitude: float,
     latitude: float,
     rising: bool,
 ) -> dt.datetime:
-    """Calculates the time when Sun's altitude below the horizon is as given.
+    """Calculates the time when Sun's altitude is as given.
 
-    There are generally two times in a day when the Sun's altitude is a certain
-    value, one when the Sun is rising and one when it is setting. Specify which
-    one with the rising parameter.
+    There are generally two times in a day when the Sun's altitude is a certain value, one when the
+    Sun is rising and one when it is setting. Specify which one with the rising parameter.
 
     Args:
-        local_noon (datetime): The datetime corresponding to noon in local timezone
-        altitude (float): The desired altitude of the Sun BELOW THE HORIZON at
-            the output time, in radians
-        longitude (float): The longitude in degrees East
+        zenith (datetime): The datetime corresponding to zenith of the day
+        altitude (float): The desired altitude of the Sun above the horizon at the output time, in
+            radians
         latitude (float): The latitude in degrees North
-        rising (bool): Whether to calculate first time (before zenith, when Sun
-            is rising) or to calculate the second time (after zenith, when sun is
-            setting)
+        rising (bool): Whether to calculate first time (before zenith, when Sun is rising) or to
+            calculate the second time (after zenith, when sun is setting)
 
     Returns:
-        datetime: The time on the given date when Sun's altitude is as given and
-            it is either rising or setting, depending on value of rising
+        datetime: The time on the given date when Sun's altitude is as given and it is either rising
+            or setting, depending on value of rising
     """
-    # TODO: error checking to see if altitude is possible (timedelta_at_altitude)
-    # will handle it probably, but make it more explicit
-    zenith = time_zenith(local_noon, longitude)
+    # TODO: error checking to see if altitude is possible. timedelta_at_altitude will handle it
+    # probably, but make it more explicit
 
-    # The declination depends on the date (and therefore changes slightly over
-    # the day), and the time when the sun is at a given altitude depends on the
-    # declination therefore this is a circular dependency, so use interpolation
-    # method to find solution. However equation of time is periodic over year
-    # scales, so this is not that necessary, but also only takes 3 iterations
+    # The declination depends on the date (and therefore changes slightly over the day), and the
+    # time when the sun is at a given altitude depends on the declination therefore this is a
+    # circular dependency, so use interpolation method to find solution. However equation of time is
+    # periodic over year scales, so this is not that necessary, but also only takes 3 iterations
     # usually.
 
     # x is the datetime guess
-    # f(x) is the difference between time calculated using the guess's
-    #   declination and the guess itself
+    # f(x) is the difference between time calculated using the guess's declination and the guess
+    #   itself
     # here x is guess and f(x) is diff (found with calc_difference)
 
     def calc_difference(guess: dt.datetime) -> dt.timedelta:
-        """Using guess to calculate declination, calculate the time of when Sun
-        is at altitude, and return difference between guess and calculated time.
+        """Using guess to calculate declination, calculate the time of when Sun is at altitude, and
+        return difference between guess and calculated time.
         """
-        eot, declination = eot_decl(guess)
+        _, declination = eot_decl(guess)
         T = timedelta_at_altitude(altitude, declination, latitude)
         if rising:
             actual = zenith - T
@@ -301,34 +291,28 @@ def time_altitude(
 
 
 def time_shadow_factor(
-    local_noon: dt.datetime,
+    zenith: dt.datetime,
     shadow_factor: float,
-    longitude: float,
     latitude: float,
     rising: bool,
 ) -> dt.datetime:
-    """Calculates the time when shadow of an object is shadow_factor times its
-    height, plus the length at zenith.
+    """Calculates the time when shadow of an object is shadow_factor times its height, plus the
+    length at zenith.
 
     Args:
-        local_noon (datetime): The datetime corresponding to noon in local timezone
+        zenith (datetime): The datetime corresponding to the zenith of the day
         shadow_factor (float): Multiplication factor from height to shadow length
-        longitude (float): The longitude in degrees East
         latitude (float): The latitude in degrees North
-        rising (bool): Whether to calculate first time (before zenith, when Sun
-            is rising) or to calculate the second time (after zenith, when sun is
-            setting)
+        rising (bool): Whether to calculate first time (before zenith, when Sun is rising) or to
+            calculate the second time (after zenith, when sun is setting)
 
     Returns:
-        datetime: The time on the given date when shadow factor is as given and
-            it is either rising or setting, depending on value of rising
+        datetime: The time on the given date when shadow factor is as given and it is either rising
+            or setting, depending on value of rising
     """
-    zenith = time_zenith(local_noon, longitude)
-
-    # the declination depends on the date (and therefore changes slightly over
-    # the day) the time when the sun is at a given altitude depends on the
-    # declination therefore this is a circular dependency, so use interpolation
-    # method to find solution
+    # The declination depends on the date (and therefore changes slightly over the day) the time
+    # when the sun is at a given altitude depends on the declination therefore this is a circular
+    # dependency, so use interpolation method to find solution
 
     # x is the datetime guess
     # f(x) is the difference between time calculated using the guess's
@@ -336,14 +320,12 @@ def time_shadow_factor(
     # here x is guess and f(x) is diff (found with calc_difference)
 
     def calc_difference(guess: dt.datetime) -> dt.timedelta:
-        """Using guess to calculate declination, calculate the time of when
-        shadow is at given length, and return difference between guess and
-        calculated time.
+        """Using guess to calculate declination, calculate the time of when shadow is at given
+        length, and return difference between guess and calculated time.
         """
-        eot, declination = eot_decl(guess)
+        _, declination = eot_decl(guess)
         altitude = calc_altitude(shadow_factor, declination, latitude)
-        # negative altitude since timedelta_at_altitude uses altitude positive for below the horizon
-        T = timedelta_at_altitude(-altitude, declination, latitude)
+        T = timedelta_at_altitude(altitude, declination, latitude)
         if rising:
             actual = zenith - T
         else:

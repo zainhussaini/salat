@@ -31,15 +31,13 @@ class GeneralMethod:
     ):
         """General system to define a method using Fajr and Isha altitudes.
 
-        Asr calculation method is provided as an arugment, and Fajr is when Sun
-        is at fajr_altitude_deg below the horizon. Isha is similarly when Sun is
-        at isha_altitude_deg below the horizon. Midnight is halfway between
-        sunset and sunrise. Sunrise is when the Sun is 0.833 degrees below the
-        horizon (accounting for diameter and atmospheric refraction) and Maghrib
-        is at sunset, which is at the same angle (0.833 degrees) except after
-        noon. Dhuhr is when sun is at it's peak, and Asr is when the shadow of
-        an object is either the same length as the height of the object, or
-        twice that length, depending on the asr_method provided.
+        Asr calculation method is provided as an arugment, and Fajr is when Sun is at
+        fajr_altitude_deg below the horizon. Isha is similarly when Sun is at isha_altitude_deg
+        below the horizon. Sunrise is when the Sun is 0.833 degrees below the horizon (accounting
+        for diameter and atmospheric refraction) and Maghrib is at sunset, which is at the same
+        angle (0.833 degrees) except after noon. Dhuhr is when sun is at it's peak, and Asr is when
+        the shadow of an object is either the same length as the height of the object, or twice that
+        length, depending on the asr_method provided.
 
         Raises:
             ValueError: If asr_method is not of type AsrMethod
@@ -48,8 +46,8 @@ class GeneralMethod:
         Args:
             fajr_altitude_deg (float): Altitude of Sun for Fajr in degrees below horizon
             isha_altitude_deg (float): Altitude of Sun for Isha in degrees below horizon
-            asr_method (AsrMethod, optional): Method to calculate Asr time.
-                Defaults to AsrMethod.STANDARD.
+            asr_method (AsrMethod, optional): Method to calculate Asr time. Defaults to
+                AsrMethod.STANDARD.
         """
         self.asr_method = asr_method
 
@@ -60,18 +58,18 @@ class GeneralMethod:
         else:
             raise ValueError(f"Unknown AsrMethod {self.asr_method}")
 
-        self.fajr_altitude = math.radians(fajr_altitude_deg)
-        self.isha_altitude = math.radians(isha_altitude_deg)
-        self.sunset_altitude = math.radians(0.833)
+        self.fajr_altitude = -math.radians(fajr_altitude_deg)
+        self.isha_altitude = -math.radians(isha_altitude_deg)
+        self.sunset_altitude = -math.radians(0.833)
 
     def calc_times(
         self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float
     ) -> "dict[str, dt.datetime]":
-        """Calculates prayer times including sunrise and midnight.
+        """Calculates prayer times.
 
         Args:
-            date (dt.date): Date to calculate the prayer times for. Note that
-                "midnight" might be past 12 am therefore on next day
+            date (dt.date): Date to calculate the prayer times for. This centers dhuhr on the date
+                and the other prayer times are calculated surrounding it.
             timezone (dt.tzinfo): Timezone of the output datetimes
             longitude (float): Longitude of position in degrees East
             latitude (float): Latitude of position in degrees North
@@ -79,28 +77,22 @@ class GeneralMethod:
         Returns:
             dict[str, dt.datetime]: dictionary from time of interest (string) to time
         """
-        local_noon = dt.datetime(date.year, date.month, date.day, 12).astimezone(timezone)
+        # use zenith as reference point for other calculations.
+        zenith = time_zenith(date, longitude)
 
-        fajr = time_altitude(local_noon, self.fajr_altitude, longitude, latitude, rising=True)
-        sunrise = time_altitude(local_noon, self.sunset_altitude, longitude, latitude, rising=True)
-        dhuhr = time_zenith(local_noon, longitude)
-        asr = time_shadow_factor(local_noon, self.shadow_factor, longitude, latitude, rising=False)
-        maghrib = time_altitude(local_noon, self.sunset_altitude, longitude, latitude, rising=False)
-        isha = time_altitude(local_noon, self.isha_altitude, longitude, latitude, rising=False)
-
-        sunset = maghrib
-        next_local_noon = local_noon + dt.timedelta(days=1)
-        next_sunrise = time_altitude(next_local_noon, self.sunset_altitude, longitude, latitude, rising=True)
-        midnight = sunset + (next_sunrise - sunset) / 2
+        fajr = time_altitude(zenith, self.fajr_altitude, latitude, True)
+        sunrise = time_altitude(zenith, self.sunset_altitude, latitude, True)
+        asr = time_shadow_factor(zenith, self.shadow_factor, latitude, False)
+        maghrib = time_altitude(zenith, self.sunset_altitude, latitude, False)
+        isha = time_altitude(zenith, self.isha_altitude, latitude, False)
 
         times = {
             "fajr": fajr,
             "sunrise": sunrise,
-            "dhuhr": dhuhr,
+            "dhuhr": zenith,
             "asr": asr,
             "maghrib": maghrib,
             "isha": isha,
-            "midnight": midnight,
         }
 
         for name in times:
@@ -109,55 +101,35 @@ class GeneralMethod:
 
 
 class TehranMethod(GeneralMethod):
-    """Uses Fajr angle 17.7 deg, Isha angle 14 deg, Maghrib angle 4.5, midnight
-    between sunset and Fajr"""
+    """Uses Fajr angle 17.7 deg, Isha angle 14 deg, Maghrib angle 4.5"""
 
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
         super().__init__(17.7, 14, asr_method=asr_method)
 
     def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
-        local_noon = dt.datetime(date.year, date.month, date.day, 12).astimezone(timezone)
-
-        magrib_altitude = math.radians(4.5)
         times = super().calc_times(date, timezone, longitude, latitude)
-        sunset = times["maghrib"]
 
         # maghrib time is different
-        maghrib = time_altitude(local_noon, magrib_altitude, longitude, latitude, rising=False)
-        times["maghrib"] = maghrib
-
-        # midnight is different, it is between sunset and fajr
-        next_local_noon = local_noon + dt.timedelta(days=1)
-        next_fajr = time_altitude(next_local_noon, self.fajr_altitude, longitude, latitude, rising=True)
-        midnight = sunset + (next_fajr - sunset) / 2
-        times["midnight"] = midnight
+        zenith = time_zenith(date, longitude)
+        magrib_altitude = -math.radians(4.5)
+        times["maghrib"] = time_altitude(zenith, magrib_altitude, latitude, rising=False)
 
         return times
 
 
 class JafariMethod(GeneralMethod):
-    """Uses Fajr angle 16 deg, Isha angle 14 deg, Maghrib angle 4 deg, midnight
-    between sunset and Fajr"""
+    """Uses Fajr angle 16 deg, Isha angle 14 deg, Maghrib angle 4 deg"""
 
     def __init__(self, asr_method: AsrMethod = AsrMethod.STANDARD):
         super().__init__(16, 14, asr_method=asr_method)
 
     def calc_times(self, date: dt.date, timezone: dt.tzinfo, longitude: float, latitude: float):
-        local_noon = dt.datetime(date.year, date.month, date.day, 12).astimezone(timezone)
-
-        magrib_altitude = math.radians(4)
         times = super().calc_times(date, timezone, longitude, latitude)
-        sunset = times["maghrib"]
 
         # maghrib time is different
-        maghrib = time_altitude(local_noon, magrib_altitude, longitude, latitude, rising=False)
-        times["maghrib"] = maghrib
-
-        # midnight is different, it is between sunset and fajr
-        next_local_noon = local_noon + dt.timedelta(days=1)
-        next_fajr = time_altitude(next_local_noon, self.fajr_altitude, longitude, latitude, rising=True)
-        midnight = sunset + (next_fajr - sunset) / 2
-        times["midnight"] = midnight
+        zenith = time_zenith(date, longitude)
+        magrib_altitude = -math.radians(4)
+        times["maghrib"] = time_altitude(zenith, magrib_altitude, latitude, rising=False)
 
         return times
 
