@@ -1,6 +1,6 @@
 # salat
 
-One of the pillars of Islam is salat, which is the act of praying five times a day. Each prayer has a specific time interval, defined in terms of the Sun's position so anyone anywhere in the world can know when it is time to pray.
+One of the pillars of Islam is salat, which is the act of praying five times a day. Each prayer has a specific time interval, defined in terms of the Sun's position, so anyone anywhere in the world can know when it is time to pray.
 
 However with modern computation most Muslims use calculated prayer times to determine when to pray instead of watching the Sun. This package performs accurate calculations using orbital dynamics equations instead of common approximations, and native Python tools like datetime to calculate these times.
 
@@ -11,13 +11,13 @@ In general terms, the time range of a prayer is from it's start until the start 
 | Name | Start of Time Range |
 |------|------------|
 | Fajr | Beginning of twilight |
-| Sunrise | Sunrise. Note that this marks the end of Fajr |
+| Sunrise | Sunrise. This marks the end of Fajr and is not its own prayer |
 | Dhuhr | When the Sun passes its zenith |
 | Asr | When the length of a shadow is the same as the length of the object (or with Hanafi method, twice the length of the object) plus its length when the Sun is at zenith |
 | Maghrib | Sunset |
 | Isha | When the red light of sunset is gone |
 
-However there are various methods and standards for what exact times these general terms correspond to. For example, according to the Muslim World League, Fajr starts when the altitude of the Sun is 18 degrees below the horizon, while the Islamic Society of North America determined it's when the sun is 15 degrees below the horizon.
+However there are various methods and standards for what exact times these general terms correspond to. For example, according to the Muslim World League, Fajr starts when the altitude of the Sun is 18 degrees below the horizon, while the Islamic Society of North America says 15 degrees below the horizon.
 
 ## Motivation
 
