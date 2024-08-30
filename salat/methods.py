@@ -112,7 +112,7 @@ class TehranMethod(GeneralMethod):
         # maghrib time is different
         zenith = time_zenith(date, longitude)
         magrib_altitude = -math.radians(4.5)
-        times["maghrib"] = time_altitude(zenith, magrib_altitude, latitude, rising=False)
+        times["maghrib"] = time_altitude(zenith, magrib_altitude, latitude, rising=False).astimezone(timezone)
 
         return times
 
@@ -129,7 +129,7 @@ class JafariMethod(GeneralMethod):
         # maghrib time is different
         zenith = time_zenith(date, longitude)
         magrib_altitude = -math.radians(4)
-        times["maghrib"] = time_altitude(zenith, magrib_altitude, latitude, rising=False)
+        times["maghrib"] = time_altitude(zenith, magrib_altitude, latitude, rising=False).astimezone(timezone)
 
         return times
 

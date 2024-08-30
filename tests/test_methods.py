@@ -7,29 +7,42 @@ import pytz
 KAABAH_LAT_LONG = (21.422487, 39.826206)
 EMPIRE_STATE_BUILDING_LAT_LONG = (40.748817, -73.985428)
 EPOCH_DATE = dt.date(2000, 1, 1)
+DEFAULT_TIME_CLOSE_DELTA_MINS = 1
 
 
-def time_close(time1: dt.datetime, time2: dt.datetime, delta: dt.timedelta) -> bool:
-    """Checks that two datetimes are within delta of each other
+def output_correct(
+    times: "dict[str, dt.datetime]",
+    true_times: "dict[str, dt.datetime]",
+    delta: dt.timedelta = None,
+) -> bool:
+    """Checks that two output lists represent the same times"""
+    if delta is None:
+        delta = dt.timedelta(minutes=DEFAULT_TIME_CLOSE_DELTA_MINS)
 
-    Args:
-        time1 (dt.datetime): first datetime
-        time2 (dt.datetime): second datetime
+    assert times.keys() == true_times.keys()
 
-    Returns:
-        bool: True if both datetimes are within delta of each other
-    """
-    if not math.isclose((time1 - time2).total_seconds(), 0, rel_tol=0, abs_tol=delta.total_seconds()):
-        print(time1)
-        print(time2)
-        print(time1 - time2)
-        return False
-    else:
-        return True
+    for name in times:
+        time = times[name]
+        true_time = true_times[name]
+        assert math.isclose(
+            (time - true_time).total_seconds(),
+            0,
+            rel_tol=0,
+            abs_tol=delta.total_seconds(),
+        )
 
 
-def parse_line(line: str, date: dt.date, timezone: dt.tzinfo):
-    # line = "05:53 AM  06:58 AM  12:24 PM  03:29 PM  05:50 PM  06:56 PM"
+def output_timezone_correct(times: "dict[str, dt.datetime]", timezone: dt.timezone):
+    for name, time in times.items():
+        assert time.tzinfo is not None
+        assert time.utcoffset() == timezone.utcoffset(time.replace(tzinfo=None))
+
+
+def parse_line(
+    line: str, date: dt.date, timezone: dt.tzinfo
+) -> "dict[str, dt.datetime]":
+    """Converts string of times to package output format for direct comparison"""
+    # example line: "05:53 AM  06:58 AM  12:24 PM  03:29 PM  05:50 PM  06:56 PM"
     times = [a.strip() for a in line.split("  ")]
 
     hour_minute = []
@@ -50,10 +63,14 @@ def parse_line(line: str, date: dt.date, timezone: dt.tzinfo):
 
     true_times = []
     for hour, minute in hour_minute:
-        if hasattr(timezone, 'localize'):
-            true_time = timezone.localize(dt.datetime(date.year, date.month, date.day, hour, minute))
+        if hasattr(timezone, "localize"):
+            true_time = timezone.localize(
+                dt.datetime(date.year, date.month, date.day, hour, minute)
+            )
         else:
-            true_time = dt.datetime(date.year, date.month, date.day, hour, minute, tzinfo=timezone)
+            true_time = dt.datetime(
+                date.year, date.month, date.day, hour, minute, tzinfo=timezone
+            )
         true_times.append(true_time)
     assert len(true_times) == 6
 
@@ -62,6 +79,7 @@ def parse_line(line: str, date: dt.date, timezone: dt.tzinfo):
 
 
 def test_parse_lines1():
+    """Tests that parse_line function works correctly by converting and converting back"""
     line = "05:53 AM   06:58 AM   12:24 PM   03:29 PM   05:50 PM   06:56 PM"
     date = dt.date(1970, 1, 1)
     timezone = dt.timezone(dt.timedelta(hours=-5), "EST")
@@ -72,6 +90,7 @@ def test_parse_lines1():
 
 
 def test_parse_lines2():
+    """Same as test_parse_lines1 except with pytz timezone"""
     line = "05:53 AM   06:58 AM   12:24 PM   03:29 PM   05:50 PM   06:56 PM"
     date = dt.date(1970, 1, 1)
     timezone = pytz.timezone("US/Eastern")
@@ -95,9 +114,8 @@ def test1():
     times = pt.calc_times(date, timezone, long, lat)
     true_times = parse_line(line, date, timezone)
 
-    delta = dt.timedelta(minutes=1)
-    for name in true_times:
-        assert time_close(times[name], true_times[name], delta)
+    output_correct(times, true_times)
+    output_timezone_correct(times, timezone)
 
 
 def test2():
@@ -114,9 +132,8 @@ def test2():
     times = pt.calc_times(date, timezone, long, lat)
     true_times = parse_line(line, date, timezone)
 
-    delta = dt.timedelta(minutes=1)
-    for name in true_times:
-        assert time_close(times[name], true_times[name], delta)
+    output_correct(times, true_times)
+    output_timezone_correct(times, timezone)
 
 
 def test3():
@@ -133,9 +150,8 @@ def test3():
     times = pt.calc_times(date, timezone, long, lat)
     true_times = parse_line(line, date, timezone)
 
-    delta = dt.timedelta(minutes=1)
-    for name in true_times:
-        assert time_close(times[name], true_times[name], delta)
+    output_correct(times, true_times)
+    output_timezone_correct(times, timezone)
 
 
 def test4():
@@ -152,15 +168,15 @@ def test4():
     times = pt.calc_times(date, timezone, long, lat)
     true_times = parse_line(line, date, timezone)
 
-    delta = dt.timedelta(minutes=1)
-    for name in true_times:
-        assert time_close(times[name], true_times[name], delta)
+    output_correct(times, true_times)
+    output_timezone_correct(times, timezone)
 
 
 def test5():
     # https://www.islamicfinder.org/prayer-times/
-    # Note: this website does not adjust Maghrib angle correctly
-    line = "05:49 AM  06:58 AM  12:24 PM  03:29 PM  05:50 PM  06:51 PM"
+    # Note: this website does not adjust Maghrib angle correctly, so the output was adjusted
+    # manually
+    line = "05:49 AM  06:58 AM  12:24 PM  03:29 PM  06:04 PM  06:51 PM"
 
     lat, long = KAABAH_LAT_LONG
     date = EPOCH_DATE
@@ -172,10 +188,8 @@ def test5():
     times = pt.calc_times(date, timezone, long, lat)
     true_times = parse_line(line, date, timezone)
 
-    delta = dt.timedelta(minutes=1)
-    for name in true_times:
-        if name != "maghrib":
-            assert time_close(times[name], true_times[name], delta)
+    output_correct(times, true_times)
+    output_timezone_correct(times, timezone)
 
 
 def test6():
@@ -192,9 +206,8 @@ def test6():
     times = pt.calc_times(date, timezone, long, lat)
     true_times = parse_line(line, date, timezone)
 
-    delta = dt.timedelta(minutes=1)
-    for name in true_times:
-        assert time_close(times[name], true_times[name], delta)
+    output_correct(times, true_times)
+    output_timezone_correct(times, timezone)
 
 
 # TODO:
