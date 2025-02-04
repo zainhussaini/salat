@@ -90,5 +90,5 @@ isha     01/01/2000, 06:00:44 PM EST
 
 ## Planned features
 1. Adjustment for higher altitudes
-2. Options for Isha/Fajr calculation in high altitudes based on "middle of the night" and "sevent of the night" methods
+2. Options for Isha/Fajr calculation in high altitudes based on "middle of the night" and "seventh of the night" methods
 3. Add additional calculation methods
