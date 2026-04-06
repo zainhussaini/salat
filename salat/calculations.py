@@ -3,6 +3,10 @@ from typing import Callable
 import math
 
 
+MAX_ITERATIONS = 1000
+TIME_TOLERANCE_SECONDS = 1e-6
+
+
 def eot_decl(time: dt.datetime) -> "tuple[dt.timedelta, float]":
     """Calculates the equation of time and Sun's declination at a given time.
 
@@ -94,10 +98,13 @@ def kepler_solve(M: float, e: float) -> float:
 
     # find E such that M = E - e*sin(E)
     E = M
-    while not math.isclose(M, E - e * math.sin(E)):
-        E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
+    for _ in range(MAX_ITERATIONS):
         # E = M + e * math.sin(E)
-    return E
+        if math.isclose(E, M + e * math.sin(E)):
+            return E
+        
+        E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
+    raise RuntimeError("Did not converge")
 
 
 def calc_altitude(shadow_factor: float, declination: float, latitude: float) -> float:
@@ -169,7 +176,7 @@ def linear_interpolation(
     Returns:
         datetime: input to diff_function which results in zero timedelta output
     """
-    if math.isclose((guess1 - guess2).total_seconds(), 0):
+    if math.isclose((guess1 - guess2).total_seconds(), 0, abs_tol=TIME_TOLERANCE_SECONDS):
         raise ValueError("guess1 and guess2 need to be different")
 
     # make guess1 left of guess2
@@ -179,13 +186,16 @@ def linear_interpolation(
     diff1 = diff_function(guess1)
     diff2 = diff_function(guess2)
     # stop iteration when both guesses converge
-    while not math.isclose((guess1 - guess2).total_seconds(), 0):
+    for _ in range(MAX_ITERATIONS):
+        if math.isclose((guess1 - guess2).total_seconds(), 0, abs_tol=TIME_TOLERANCE_SECONDS):
+            return guess1
+
         guess3 = guess1 - diff1 * ((guess2 - guess1) / (diff2 - diff1))
         diff3 = diff_function(guess3)
 
         guess1, diff1 = guess2, diff2
         guess2, diff2 = guess3, diff3
-    return guess1
+    raise RuntimeError("Did not converge")
 
 
 def time_zenith(date: dt.date, longitude: float) -> dt.datetime:
