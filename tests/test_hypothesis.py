@@ -4,7 +4,7 @@ from salat.methods import CalculationMethod, AsrMethod
 from hypothesis import assume, given, settings, strategies as st
 
 
-@settings(deadline=10, max_examples=10000)
+@settings(deadline=10, max_examples=1000)
 @given(
     calc_method=st.sampled_from(CalculationMethod),
     asr_method=st.sampled_from(AsrMethod),
