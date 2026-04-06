@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salat"
+version = "1.1.0"
+description = "Tool to calculate accurate salat (prayer) times"
+readme = "README.md"
+authors = [
+    {name = "Zain Hussaini", email = "zih301@gmail.com"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+]
+
+dependencies = [] 
+
+[project.urls]
+Homepage = "https://github.com/zainhussaini/salat"
+
+[project.optional-dependencies]
+full = ["hijri-converter"]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytz",
+    "tabulate",
+]
+
+[tool.setuptools]
+packages = ["salat"]
+include-package-data = true
