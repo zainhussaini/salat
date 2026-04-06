@@ -25,6 +25,7 @@ Homepage = "https://github.com/zainhussaini/salat"
 [project.optional-dependencies]
 full = ["hijri-converter"]
 test = [
+    "hypothesis",
     "pytest",
     "pytest-cov",
     "pytz",
